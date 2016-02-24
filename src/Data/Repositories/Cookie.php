@@ -9,11 +9,11 @@ use Illuminate\Cookie\CookieJar;
 
 class Cookie extends Repository {
 
-	private $config;
+    private $config;
 
-	private $request;
+    private $request;
 
-	private $cookieJar;
+    private $cookieJar;
 
     public function __construct($model, Config $config, Request $request, CookieJar $cookieJar)
     {
@@ -28,6 +28,7 @@ class Cookie extends Repository {
 
     public function getId()
     {
+
         if ( ! $this->config->get('store_cookie_tracker'))
         {
             return null;
@@ -37,9 +38,9 @@ class Cookie extends Repository {
         {
             $cookie = (string) UUID::uuid4();
 
-            $this->cookieJar->queue($this->config->get('tracker_cookie_name'), $cookie, 0);
+            $this->cookieJar->queue($this->config->get('tracker_cookie_name'), $cookie, 2628000);
         }
-
+        
         return $this->findOrCreate(array('uuid' => $cookie));
     }
 

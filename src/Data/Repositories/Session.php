@@ -9,17 +9,17 @@ use PragmaRX\Support\PhpSession;
 
 class Session extends Repository {
 
-	private $config;
+    private $config;
 
-	private $session;
+    private $session;
 
-	private $sessionInfo;
+    private $sessionInfo;
 
-	public function __construct($model, Config $config, PhpSession $session)
+    public function __construct($model, Config $config, PhpSession $session)
     {
         $this->config = $config;
 
-	    $this->session = $session;
+        $this->session = $session;
 
         parent::__construct($model);
     }
@@ -55,15 +55,13 @@ class Session extends Repository {
             $this->regenerateSystemSession();
         }
 
-	    $this->checkSessionUuid();
+        $this->checkSessionUuid();
     }
 
     private function sessionIsReliable()
     {
         $data = $this->getSessionData();
-
-        return  isset($data['user_id']) &&
-                $data['user_id'] === $this->sessionInfo['user_id'] &&
+        return  $data['user_id'] === $this->sessionInfo['user_id'] &&
 
                 isset($data['client_ip']) &&
                 $data['client_ip'] === $this->sessionInfo['client_ip'] &&
@@ -80,11 +78,11 @@ class Session extends Repository {
         }
         else
         {
-	        $session = $this->find($this->getSessionData('id'));
+            $session = $this->find($this->getSessionData('id'));
 
-	        $session->updated_at = Carbon::now();
+            $session->updated_at = Carbon::now();
 
-	        $session->save();
+            $session->save();
 
             $this->sessionInfo['id'] = $this->getSessionData('id');
         }
@@ -156,21 +154,21 @@ class Session extends Repository {
 
     private function regenerateSystemSession($data = null)
     {
-	    $data = $data ?: $this->getSessionData();
+        $data = $data ?: $this->getSessionData();
 
         if ($data)
         {
-	        $this->resetSessionUuid($data);
+            $this->resetSessionUuid($data);
 
-	        $this->sessionIsKnownOrCreateSession();
+            $this->sessionIsKnownOrCreateSession();
         }
 
-	    return $this->sessionInfo;
+        return $this->sessionInfo;
     }
 
     private function getSessionData($variable = null)
     {
-	    $id = $this->getSessioIdentifier();
+        $id = $this->getSessioIdentifier();
 
         $data = $this->session->get($id);
 
@@ -190,15 +188,15 @@ class Session extends Repository {
     private function getSessions()
     {
         return $this
-	            ->newQuery()
-	            ->with('user')
-		        ->with('device')
-		        ->with('agent')
-		        ->with('referer')
-		        ->with('geoIp')
-		        ->with('log')
-		        ->with('cookie')
-	            ->orderBy('updated_at', 'desc');
+                ->newQuery()
+                ->with('user')
+                ->with('device')
+                ->with('agent')
+                ->with('referer')
+                ->with('geoIp')
+                ->with('log')
+                ->with('cookie')
+                ->orderBy('updated_at', 'desc');
     }
 
     public function all()
@@ -208,16 +206,16 @@ class Session extends Repository {
 
     public function last($minutes, $results)
     {
-	    $query = $this
-		            ->getSessions()
-		            ->period($minutes);
+        $query = $this
+                    ->getSessions()
+                    ->period($minutes);
 
-	    if ($results)
-	    {
-		    return $query->get();
-	    }
+        if ($results)
+        {
+            return $query->get();
+        }
 
-	    return $query;
+        return $query;
     }
 
     public function userDevices($minutes, $user_id, $results) {
@@ -244,61 +242,61 @@ class Session extends Repository {
          return $this->getModel()->users($minutes, $results);
     }
 
-	public function getCurrent()
-	{
-		return $this->getModel();
-	}
+    public function getCurrent()
+    {
+        return $this->getModel();
+    }
 
-	public function updateSessionData($data)
-	{
-		$session = $this->checkIfUserChanged($data, $this->find($this->getSessionData('id')));
+    public function updateSessionData($data)
+    {
+        $session = $this->checkIfUserChanged($data, $this->find($this->getSessionData('id')));
+        
+        foreach($session->getAttributes() as $name => $value)
+        {
+            if (isset($data[$name]) && $name !== 'id' && $name !== 'uuid')
+            {
+                $session->{$name} = $data[$name];
+            }
+        }
 
-		foreach($session->getAttributes() as $name => $value)
-		{
-			if (isset($data[$name]) && $name !== 'id' && $name !== 'uuid')
-			{
-				$session->{$name} = $data[$name];
-			}
-		}
+        $session->save();
 
-		$session->save();
+        return $data;
+    }
 
-		return $data;
-	}
+    private function checkIfUserChanged($data, $model)
+    {
+        if ( ! is_null($model->user_id) && ! is_null($data['user_id']) && $data['user_id'] !== $model->user_id)
+        {
+            $newSession = $this->regenerateSystemSession($data);
 
-	private function checkIfUserChanged($data, $model)
-	{
-		if ( ! is_null($model->user_id) && ! is_null($data['user_id']) && $data['user_id'] !== $model->user_id)
-		{
-			$newSession = $this->regenerateSystemSession($data);
+            $model = $this->findByUuid($newSession['uuid']);
+        }
 
-			$model = $this->findByUuid($newSession['uuid']);
-		}
+        return $model;
+    }
 
-		return $model;
-	}
+    private function checkSessionUuid()
+    {
+        if ( ! isset($this->sessionInfo['uuid']) || ! $this->sessionInfo['uuid'])
+        {
+            $this->sessionInfo['uuid'] = $this->getSystemSessionId();
+        }
+    }
 
-	private function checkSessionUuid()
-	{
-		if ( ! isset($this->sessionInfo['uuid']) || ! $this->sessionInfo['uuid'])
-		{
-			$this->sessionInfo['uuid'] = $this->getSystemSessionId();
-		}
-	}
+    private function resetSessionUuid($data = null)
+    {
+        $this->sessionInfo['uuid'] = null;
 
-	private function resetSessionUuid($data = null)
-	{
-		$this->sessionInfo['uuid'] = null;
+        $data = $data ?: $this->sessionInfo;
 
-		$data = $data ?: $this->sessionInfo;
+        unset($data['uuid']);
 
-		unset($data['uuid']);
+        $this->putSessionData($data);
 
-		$this->putSessionData($data);
+        $this->checkSessionUuid();
 
-		$this->checkSessionUuid();
-
-		return $data;
-	}
+        return $data;
+    }
 
 }
